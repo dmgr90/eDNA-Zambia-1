@@ -1,0 +1,30 @@
+
+#This is the script used for squence taxonomic asigments using BLAST
+#First a BLAST format database mus be built
+
+# Define the database directory and name
+fastaDir="path/to/otus" 
+dbDir="path/to/reference/database"
+dbName="databaseNAME"
+
+
+# Loop through the FASTA files containing the OTUs
+
+for inputFile in ${fastaDir}/*.fa ; do
+
+  # Extract a meaningful part of the file name to use in the output file name
+
+  baseName=$(basename "${inputFile}".fa)
+
+  outputTabular="./${baseName}.txt"
+
+  
+  # Run BLAST taking take 3 best hits with output in type 6 format
+
+  blastn -query "${inputFile}" -db "${dbDir}/${dbName}" -out "${outputTabular}" \
+
+    -outfmt '6 qseqid sseqid stitle staxids sscinames scomnames pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore' \
+
+    -max_target_seqs 3 -num_threads 24
+
+done
