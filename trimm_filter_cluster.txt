@@ -1,0 +1,166 @@
+
+Daniel Gygax <dgygax90@googlemail.com>
+1 abr 2025, 4:51 p.m. (hace 22 horas)
+para mí
+
+# Number of threads
+
+threads=##
+
+
+
+# Define primers
+
+PRIMER_F=""
+
+PRIMER_R=""
+
+
+
+# Specify input directory path for Illumina data
+
+input_dir="path/to/reaads_folder"
+
+logs_dir="./illumina_logs"
+
+mkdir -p "$logs_dir"
+
+#This script requires illumina paired end data (eg. R1 and R2 files)
+
+# Loop through R1 files in the input directory
+
+for r1_file in "$input_dir"/*_R1.fastq.gz; do
+
+    # Extract the base name for paired files
+
+    base_name=$(basename "$r1_file" "_R1.fastq.gz")
+
+    r2_file="${input_dir}/${base_name}_R2.fastq.gz"
+
+
+
+    # Check if both R1 and R2 files are there
+
+    if [ ! -f "$r2_file" ]; then
+
+        echo "Paired R2 file not found for $r1_file; skipping."
+
+        continue
+
+    fi
+
+
+
+    # Trimm primers
+
+    trimmed_r1="${base_name}_R1_trimmed.fastq"
+
+    trimmed_r2="${base_name}_R2_trimmed.fastq"
+
+    cutadapt -g "$PRIMER_F" -G "$PRIMER_R" -o "$trimmed_r1" -p "$trimmed_r2" "$r1_file" "$r2_file" > "$logs_dir/cutadapt.${base_name}.log"
+
+
+
+    # Merge paired reads 
+
+    merged_file="${base_name}_merged.fastq"
+
+    unmerged_r1="${base_name}_unmerged_R1.fastq"
+
+    unmerged_r2="${base_name}_unmerged_R2.fastq"
+
+    echo "Merging ${base_name} with BBMerge..."
+
+    bbmerge.sh in1="$trimmed_r1" in2="$trimmed_r2" \
+
+               out="$merged_file" \
+
+               outu1="$unmerged_r1" \
+
+               outu2="$unmerged_r2" \
+
+               threads="$threads" > "$logs_dir/bbmerge.${base_name}.log" 2>&1
+
+
+
+    # Filtering 
+
+    filtered_file="${base_name}.filtered.fa"
+
+    vsearch --fastq_filter "$merged_file" \
+
+            --fastq_minlen 80 \
+
+            --fastq_maxlen 200 \
+
+            --fastq_maxns 0 \
+
+            --fastaout "$filtered_file" \
+
+            --fasta_width 0 \
+
+            --fastq_qmax 62 \
+
+            --threads "$threads" 2> "$logs_dir/vsearch.mf.${base_name}.log"
+
+
+
+    # Check if filtering step worked
+
+    if [ ! -f "$filtered_file" ]; then
+
+        echo "Filtered file not generated for $base_name; skipping."
+
+        continue
+
+    fi
+
+
+
+    # Dereplication
+
+    derep_file="${base_name}.derep.fa"
+
+    vsearch --derep_fulllength "$filtered_file" \
+
+            --minuniquesize 2 \
+
+            --sizein \
+
+            --sizeout \
+
+            --fasta_width 0 \
+
+            --output "$derep_file" \
+
+            --threads "$threads"
+
+
+
+    # Chimera removal
+
+    nochim_file="${base_name}.nochimera.fa"
+
+    vsearch --uchime3_denovo "$derep_file" \
+
+            --nonchimeras "$nochim_file" \
+
+            --threads "$threads"
+
+
+
+    # OTU clustering
+
+    vsearch --cluster_size "$nochim_file" \
+
+            --sizein \
+
+            --sizeout \
+
+            --centroids "otus_97_${base_name}.fa" \
+
+            --id 0.97 \
+
+            --threads "$threads"
+
+done
