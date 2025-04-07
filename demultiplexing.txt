@@ -1,0 +1,13 @@
+#Demultiplexing Nanopore single end data with obitools4
+
+obimultiplex path/to/nanopore/read.fastq -t /path/to/demultiplexing/file.tsv -u unknown?output.fastq.gz -o output.fastq.gz -e 1 --max-cpu 8 --compress 
+
+#Demultiplexing Illumina paired end data using cutadapt
+
+mkdir L1
+mkdir L4
+
+cutadapt -j 8 -e 1 --revcomp --no-indels -g ^file:/path/to/demultiplexing/file.fasta -G ^file:/path/to/demultiplexing/file.fasta -o './L1/{name}_R1.fastq.gz' -p './L1/{name}_R2.fastq.gz' /path/to/illumina/read/R1/data/file_L1_1.fq.gz /path/to/illumina/read/R2/data/file_L1_2.fq.gz 
+
+#Repeat for lane 4
+
