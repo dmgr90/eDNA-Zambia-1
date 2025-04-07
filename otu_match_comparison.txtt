@@ -1,0 +1,43 @@
+import csv
+
+def load_blast_file(file_path)
+    data = {}
+    with open(file_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile, delimiter='\t')
+        for row in reader:
+            qseqid = row['qseqid']
+            stitle = row['stitle']
+            data[qseqid] = stitle
+    return data
+
+#Match the qseqid in both database (eg. A vs B) files
+def compare_files(file1, file2, output_file):
+
+    data1 = load_blast_file(file1)
+    data2 = load_blast_file(file2)
+
+    with open(output_file, 'w', newline='') as outfile:
+        writer = csv.writer(outfile, delimiter='\t')
+        writer.writerow(['qseqid', 'stitle_file1', 'stitle_file2'])  # Header row
+
+        
+
+        # Find common qseqid and write them with corresponding stitle from each file
+
+        for qseqid in data1:
+            if qseqid in data2:
+                writer.writerow([qseqid, data1[qseqid], data2[qseqid]])
+
+
+#Files and filenames
+ont_file1 = 'path/to/nanopore/blast/results/database_A'
+ont_file2 = 'path/to/nanopore/blast/results/database_B'
+ill_file1 = 'path/to/illumina/blast/results/database_A'
+ill_file2 = 'path/to/illumina/blast/results/database_B'
+
+output_ont = 'ont_comparison_output.txt'
+output_ill = 'ill_comparison_output.txt'
+
+compare_files(ont_file1, ont_file2, output_ont)
+compare_files(ill_file1, ill_file2, output_ill)
+
